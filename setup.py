@@ -1,4 +1,6 @@
-url = "https://onionoo.torproject.org/details"
-archiveFolder = "./archive/"
 torVersion = "8.0"
-lastModified = 'Thu, 14 Dec 2023 22:08:54 GMT'
+archiveFolder = "./archive/"
+
+urlToday = "https://onionoo.torproject.org/details"
+urlInPast = "https://metrics.torproject.org/collector/archive/relay-descriptors/consensuses/"
+lastModified = 'Fri, 15 Dec 2023 18:06:32 GMT'
