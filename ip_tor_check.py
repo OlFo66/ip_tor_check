@@ -1,11 +1,11 @@
 import sys
+import os
 import json
 import requests
 from setup import *
 import ipaddress
-
-# Check if the relay list is up-to-date
-# And if the version of the json schema changed.
+import re
+from datetime import date
 
 def updateCheckup():
     data = requests.head(urlToday)
@@ -38,15 +38,20 @@ def updateCheckup():
         except:
             print("Issue while trying to download tor relay list.")
             sys.exit(1)
-
-def checkProvidedIp(address):
+def checkIPFormat(address):
     try:
         ipaddress.ip_address(address)
         pass
     except:
         print("%s not a valid IP" % address)
         sys.exit(2)
-
+def checkDateFormat(providedDate):
+    try:
+        date.fromisoformat(providedDate)
+    except:
+        print("Error: %s is not a valid date." % providedDate)
+        sys.exit(3)
+    pass
 def checkIPToday(ipaddress,relayList):
     for i in range(len(relayList['relays'])):
         for Ip in relayList['relays'][i]['or_addresses']:
@@ -54,9 +59,19 @@ def checkIPToday(ipaddress,relayList):
                 print("* %s found as TOR relay with port %s and flags: %s" %(Ip.rsplit(':',1)[0], Ip.rsplit(':',1)[1], relayList['relays'][i]['flags']))
             else:
                 pass
+def checkIPInPast(ipaddress,providedDate):
+    if str(providedDate) != str(date.today()):
+        print("%s - %s" %(providedDate, date.today()))
+        pass
+    else:
+        checkIPToday(ipaddress, relayList)
+def checkArchivePath(providedDate, pathToCheck=archiveFolder):
+    archivePath=pathToCheck+(providedDate.replace("-","/"))
+    if os.path.isdir(archivePath):
+        pass
+    else:
+        print("Folder %s doesn't exist" % archivePath)
 
-def checkIPInPast(ipaddress,date):
-    pass
 
 if __name__ == '__main__':
     updateCheckup()
@@ -66,13 +81,15 @@ if __name__ == '__main__':
         file.close()
         relayList = json.loads(valuesInFile)
 
-    ipToCheck = ['2001:1600:10:100::201', '104.53.221.159', '10.10.10.10', ['azs','azs2']]
+    ipToCheck = ['2001:1600:10:100::201', '104.53.221.159', '10.10.10.10', ['104.53.221.159','2023-12-17']]
     for ip in ipToCheck:
         if type(ip) == str:
-            checkProvidedIp(ip)
+            checkIPFormat(ip)
             checkIPToday(ip, relayList)
         elif type(ip) == list and len(ip) == 2:
-            checkProvidedIp(ip[0])
+            checkIPFormat(ip[0])
+            checkDateFormat(ip[1])
+            checkArchivePath(ip[1])
             checkIPInPast(ip[0], ip[1])
         else:
             print("Provide <IP> or <IP>,<YYYY-MM-DD>")

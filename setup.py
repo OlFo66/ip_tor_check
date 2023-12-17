@@ -3,4 +3,4 @@ archiveFolder = "./archive/"
 
 urlToday = "https://onionoo.torproject.org/details"
 urlInPast = "https://metrics.torproject.org/collector/archive/relay-descriptors/consensuses/"
-lastModified = 'Fri, 15 Dec 2023 18:06:32 GMT'
+lastModified = 'Sun, 17 Dec 2023 20:06:50 GMT'

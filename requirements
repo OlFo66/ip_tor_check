@@ -1,3 +1,5 @@
 requests
 re
 ipaddress
+os
+sys
