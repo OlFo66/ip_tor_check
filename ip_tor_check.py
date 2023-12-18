@@ -6,6 +6,7 @@ from setup import *
 import ipaddress
 import re
 from datetime import date
+import tarfile
 
 def updateCheckup():
     data = requests.head(urlToday)
@@ -61,31 +62,57 @@ def checkIPToday(ipaddress,relayList):
                 pass
 def checkIPInPast(ipaddress,providedDate):
     if str(providedDate) != str(date.today()):
-        print("%s - %s" %(providedDate, date.today()))
-        pass
+        dateArchive = providedDate.split(sep="-", maxsplit=2)
+        archivePath = archiveFolder+"consensuses-"+dateArchive[0]+"-"+dateArchive[1]+"/"+dateArchive[2]
+
+        for file in os.listdir(archivePath):
+            with open(archivePath+"/"+file, 'r') as f:
+                info = f.read()
+                if re.search(ipaddress, info):
+                    print("* %s found as TOR relay during: %s" % (ipaddress, providedDate))
+                    break
+                else:
+                    pass
     else:
         checkIPToday(ipaddress, relayList)
 def checkArchivePath(providedDate, pathToCheck=archiveFolder):
-    archivePath=pathToCheck+(providedDate.replace("-","/"))
+    dateArchive = providedDate.split(sep="-", maxsplit=2)
+    archivePath=pathToCheck+"consensuses-"+dateArchive[0]+"-"+dateArchive[1]+"/"+dateArchive[2]
+
     if os.path.isdir(archivePath):
         pass
     else:
         print("Folder %s doesn't exist" % archivePath)
-
+        try:
+            #dateArchive = providedDate.split(sep="-", maxsplit=2)
+            urlZip = urlInPast+"consensuses-"+dateArchive[0]+"-"+dateArchive[1]+".tar.xz"
+            localZipFile = archiveFolder+"/"+dateArchive[0]+"-"+dateArchive[1]+".tar.xz"
+            archiveData = requests.get(urlZip)
+            if archiveData.status_code == 200:
+                with open(localZipFile, 'wb') as localZip:
+                    for chunk in archiveData:
+                        localZip.write(chunk)
+                    localZip.close()
+                localFolders = tarfile.open(localZipFile, 'r:xz')
+                localFolders.extractall(path=archiveFolder)
+                localFolders.close()
+                os.remove(localZipFile)
+        except:
+            print("Error while downloading or uncompressing archive.")
 
 if __name__ == '__main__':
     updateCheckup()
-
     with open('torRelayList', "r") as file:
         valuesInFile = file.read()
         file.close()
         relayList = json.loads(valuesInFile)
 
-    ipToCheck = ['2001:1600:10:100::201', '104.53.221.159', '10.10.10.10', ['104.53.221.159','2023-12-17']]
+    ipToCheck = ['2001:1600:10:100::201', ['86.59.21.38','2023-10-17'], '104.53.221.159', '10.10.10.10']
     for ip in ipToCheck:
         if type(ip) == str:
             checkIPFormat(ip)
             checkIPToday(ip, relayList)
+            pass
         elif type(ip) == list and len(ip) == 2:
             checkIPFormat(ip[0])
             checkDateFormat(ip[1])
