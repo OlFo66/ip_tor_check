@@ -2,40 +2,29 @@ import sys
 import os
 import json
 import requests
-from setup import *
 import ipaddress
 import re
 from datetime import date
 import tarfile
+import configparser
 
-def updateCheckup():
+def updateCheckup(urlToday, torRelayList):
+
     data = requests.head(urlToday)
 
-    if data.headers['last-modified'] == lastModified:
-        print("TOR relay list up to date.")
-        pass
-    else:
-        print("TOR relay list out to date")
+    if data.headers['x-backend'] in torRelayList and data.headers['last-modified'] == torRelayList[data.headers['x-backend']]:
+        print("TOR relay list is up-to-date.")
+        return(False, False)
+    elif data.headers['x-backend'] not in torRelayList or data.headers['last-modified'] != torRelayList[data.headers['x-backend']]:
+        xBackend, lastModified = data.headers['x-backend'], data.headers['last-modified']
+        #print("0: %s - %s" % (xBackend, lastModified))
         try:
             data = requests.get(urlToday)
             torInfo = data.json()
-
-            with open('torRelayList', "w") as file:
+            with open('torRelayJson', "w") as file:
                 file.write(json.dumps(torInfo))
-
-            with open("setup.py", "rt") as file:
-                x=file.read()
-
-            with open("setup.py", "wt") as file:
-                x = x.replace(lastModified,data.headers['last-modified'])
-                file.write(x)
-            print("TOR relay list updated")
-
-            if torInfo['version'] != str(torVersion):
-                print("/!\ Script written for TOR relay json version %s." % torVersion)
-                print("Current version: %s" % torInfo['version'])
-                print("PLease make sur everything is OK & modify the torVersion variable in conf file.")
-
+                file.close()
+            return(str(xBackend), str(lastModified))
         except:
             print("Issue while trying to download tor relay list.")
             sys.exit(1)
@@ -69,13 +58,13 @@ def checkIPInPast(ipaddress,providedDate):
             with open(archivePath+"/"+file, 'r') as f:
                 info = f.read()
                 if re.search(ipaddress, info):
-                    print("* %s found as TOR relay during: %s" % (ipaddress, providedDate))
+                    print("* %s found as TOR relay during: %s, search in archive to find flags." % (ipaddress, providedDate))
                     break
                 else:
                     pass
     else:
         checkIPToday(ipaddress, relayList)
-def checkArchivePath(providedDate, pathToCheck=archiveFolder):
+def checkArchivePath(providedDate, pathToCheck):
     dateArchive = providedDate.split(sep="-", maxsplit=2)
     archivePath=pathToCheck+"consensuses-"+dateArchive[0]+"-"+dateArchive[1]+"/"+dateArchive[2]
 
@@ -101,14 +90,39 @@ def checkArchivePath(providedDate, pathToCheck=archiveFolder):
             print("Error while downloading or uncompressing archive.")
 
 if __name__ == '__main__':
-    updateCheckup()
-    with open('torRelayList', "r") as file:
+
+    config = configparser.ConfigParser()
+    config.read('setup.ini')
+    urlToday = config['TOR_URL']['urltoday']
+    torRelayList = config['TOR_RELAY_LIST']
+    archiveFolder = config['ARCHIVE']['archiveFolder']
+
+    xBackend, lastModified = updateCheckup(urlToday, torRelayList)
+
+    if xBackend and lastModified:
+        if xBackend in torRelayList:
+            print("Updating last-modified of %s with: %s" % (xBackend, lastModified))
+            config.remove_option('TOR_RELAY_LIST', xBackend)
+            config.set('TOR_RELAY_LIST', xBackend, lastModified)
+        else:
+            print("%s not found in list" % xBackend)
+            config.set('TOR_RELAY_LIST', xBackend, lastModified)
+        with open('setup.ini', 'wt') as configFile:
+            config.write(configFile)
+            configFile.close()
+
+    with open('torRelayJson', "r") as file:
         valuesInFile = file.read()
         file.close()
         relayList = json.loads(valuesInFile)
 
-    ipToCheck = ['2001:1600:10:100::201', ['86.59.21.38','2023-10-17'], '104.53.221.159', '10.10.10.10']
-    for ip in ipToCheck:
+        if str(relayList['version']) != str(config['CHECKUP']['torversion']):
+            print("/!\ Script written for TOR relay json version %s." % config['CHECKUP']['torversion'])
+            print("Current version: %s" % relayList['version'])
+            print("PLease make sur everything is OK & modify the torVersion variable in conf file.")
+
+    ipList = ['2001:1600:10:100::201', '104.53.221.159', ['86.59.21.38','2023-09-17'], '10.10.10.10']
+    for ip in ipList:
         if type(ip) == str:
             checkIPFormat(ip)
             checkIPToday(ip, relayList)
@@ -116,7 +130,7 @@ if __name__ == '__main__':
         elif type(ip) == list and len(ip) == 2:
             checkIPFormat(ip[0])
             checkDateFormat(ip[1])
-            checkArchivePath(ip[1])
+            checkArchivePath(ip[1], archiveFolder)
             checkIPInPast(ip[0], ip[1])
         else:
             print("Provide <IP> or <IP>,<YYYY-MM-DD>")
