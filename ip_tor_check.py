@@ -7,7 +7,8 @@ import re
 from datetime import date
 import tarfile
 import configparser
-
+import warnings
+warnings.filterwarnings("ignore")
 def updateCheckup(urlToday, torRelayList):
 
     data = requests.head(urlToday)
@@ -64,7 +65,7 @@ def checkIPInPast(ipaddress,providedDate):
                     pass
     else:
         checkIPToday(ipaddress, relayList)
-def checkArchivePath(providedDate, pathToCheck):
+def checkArchivePath(providedDate, pathToCheck, urlInPast):
     dateArchive = providedDate.split(sep="-", maxsplit=2)
     archivePath=pathToCheck+"consensuses-"+dateArchive[0]+"-"+dateArchive[1]+"/"+dateArchive[2]
 
@@ -73,7 +74,7 @@ def checkArchivePath(providedDate, pathToCheck):
     else:
         print("Folder %s doesn't exist" % archivePath)
         try:
-            #dateArchive = providedDate.split(sep="-", maxsplit=2)
+            dateArchive = providedDate.split(sep="-", maxsplit=2)
             urlZip = urlInPast+"consensuses-"+dateArchive[0]+"-"+dateArchive[1]+".tar.xz"
             localZipFile = archiveFolder+"/"+dateArchive[0]+"-"+dateArchive[1]+".tar.xz"
             archiveData = requests.get(urlZip)
@@ -96,6 +97,7 @@ if __name__ == '__main__':
     urlToday = config['TOR_URL']['urltoday']
     torRelayList = config['TOR_RELAY_LIST']
     archiveFolder = config['ARCHIVE']['archiveFolder']
+    urlInPast = config['TOR_URL']['urlinpast']
 
     xBackend, lastModified = updateCheckup(urlToday, torRelayList)
 
@@ -125,12 +127,12 @@ if __name__ == '__main__':
     for ip in ipList:
         if type(ip) == str:
             checkIPFormat(ip)
-            checkIPToday(ip, relayList)
+            checkIPToday(ip, relayList, )
             pass
         elif type(ip) == list and len(ip) == 2:
             checkIPFormat(ip[0])
             checkDateFormat(ip[1])
-            checkArchivePath(ip[1], archiveFolder)
+            checkArchivePath(ip[1], archiveFolder, urlInPast)
             checkIPInPast(ip[0], ip[1])
         else:
             print("Provide <IP> or <IP>,<YYYY-MM-DD>")
