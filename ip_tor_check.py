@@ -9,9 +9,9 @@ import tarfile
 import configparser
 import warnings
 warnings.filterwarnings("ignore")
-def updateCheckup(urlToday, torRelayList):
+def updateCheckup(urlToday, torRelayList, proxies=''):
 
-    data = requests.head(urlToday)
+    data = requests.head(urlToday, proxies=proxies, verify=False)
 
     if data.headers['x-backend'] in torRelayList and data.headers['last-modified'] == torRelayList[data.headers['x-backend']]:
         print("TOR relay list is up-to-date.")
@@ -19,7 +19,7 @@ def updateCheckup(urlToday, torRelayList):
     elif data.headers['x-backend'] not in torRelayList or data.headers['last-modified'] != torRelayList[data.headers['x-backend']]:
         xBackend, lastModified = data.headers['x-backend'], data.headers['last-modified']
         try:
-            data = requests.get(urlToday)
+            data = requests.get(urlToday, proxies=proxies, verify=False)
             torInfo = data.json()
             with open('torRelayJson', "w") as file:
                 file.write(json.dumps(torInfo))
@@ -77,7 +77,7 @@ def checkIPInPast(ipaddress,providedDate,option,archiveFolder):
             print("* %s not found as TOR relay during %s." % (ipaddress, providedDate))
     else:
         isFound, portFound, flagsFound = checkIPToday(ipaddress, option)
-def checkArchivePath(providedDate, pathToCheck, urlInPast, archiveFolder):
+def checkArchivePath(providedDate, pathToCheck, urlInPast, archiveFolder, proxies=''):
     dateArchive = providedDate.split(sep="-", maxsplit=2)
     archivePath=pathToCheck+"consensuses-"+dateArchive[0]+"-"+dateArchive[1]+"/"+dateArchive[2]
 
@@ -90,7 +90,7 @@ def checkArchivePath(providedDate, pathToCheck, urlInPast, archiveFolder):
             dateArchive = providedDate.split(sep="-", maxsplit=2)
             urlZip = urlInPast+"consensuses-"+dateArchive[0]+"-"+dateArchive[1]+".tar.xz"
             localZipFile = archiveFolder+"/"+dateArchive[0]+"-"+dateArchive[1]+".tar.xz"
-            archiveData = requests.get(urlZip)
+            archiveData = requests.get(urlZip, proxies=proxies, verify=False)
             if archiveData.status_code == 200:
                 with open(localZipFile, 'wb') as localZip:
                     for chunk in archiveData:
@@ -155,8 +155,15 @@ def search(*args):
         torRelayList = config['TOR_RELAY_LIST']
         archiveFolder = config['ARCHIVE']['archiveFolder']
         urlInPast = config['TOR_URL']['urlinpast']
+        if config.items('PROXY'):
+            proxies = {
+                'https':config['PROXY']['httpsProxy'],
+                'http': config['PROXY']['httpsProxy']
+            }
+        else:
+            proxies = ''
 
-        xBackend, lastModified = updateCheckup(urlToday, torRelayList)
+        xBackend, lastModified = updateCheckup(urlToday, torRelayList, proxies)
 
         if xBackend and lastModified:
             if xBackend in torRelayList:
@@ -174,8 +181,6 @@ def search(*args):
             file.close()
             global relayList
             relayList = json.loads(valuesInFile)
-
-
 
             if str(relayList['version']) != str(config['CHECKUP']['torversion']):
                 print("/!\ Script written for TOR relay json version %s." % config['CHECKUP']['torversion'])
