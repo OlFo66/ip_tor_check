@@ -1,6 +1,6 @@
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://GitHub.com/Naereen/StrapDown.js/graphs/commit-activity)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/datetime)
-[![License](https://img.shields.io/badge/License-Beerware-yellow)](https://en.wikipedia.org/wiki/Beerware)
+[![License](https://img.shields.io/badge/License-Beerware-yellow)](https://fedoraproject.org/wiki/Licensing/Beerware)
 
 <img src="https://styleguide.torproject.org/static/images/tor-logo/color.svg" data-canonical-src="https://styleguide.torproject.org/static/images/tor-logo/color.svg" width="600" height="100" />
 
